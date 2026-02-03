@@ -9,8 +9,8 @@ const eventSchema = new mongoose.Schema(
             trim: true,
         },
         date: {
-            type: Date,
-            required: [true, 'Event date is required'],
+            type: String, // Scraped dates are strings, not Date objects
+            default: 'Date TBA',
         },
         venue: {
             type: String,
