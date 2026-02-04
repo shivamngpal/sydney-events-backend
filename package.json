@@ -15,7 +15,10 @@
     "cors": "^2.8.6",
     "dotenv": "^17.2.3",
     "express": "^5.2.1",
+    "express-session": "^1.19.0",
     "mongoose": "^9.1.5",
+    "passport": "^0.7.0",
+    "passport-google-oauth20": "^2.0.0",
     "puppeteer": "^24.36.1"
   },
   "devDependencies": {
