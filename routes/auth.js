@@ -2,6 +2,9 @@ const express = require('express');
 const passport = require('passport');
 const router = express.Router();
 
+// Dynamic client URL for redirects
+const CLIENT_URL = process.env.CLIENT_URL || 'http://localhost:5173';
+
 // @route   GET /auth/google
 // @desc    Authenticate with Google
 // @access  Public
@@ -22,7 +25,7 @@ router.get(
     }),
     (req, res) => {
         // Successful authentication, redirect to admin dashboard
-        res.redirect('http://localhost:3000/admin');
+        res.redirect(`${CLIENT_URL}/admin`);
     }
 );
 
@@ -64,7 +67,7 @@ router.get('/logout', (req, res) => {
                 message: 'Error logging out',
             });
         }
-        res.redirect('http://localhost:3000');
+        res.redirect(CLIENT_URL);
     });
 });
 
