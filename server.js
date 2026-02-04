@@ -17,6 +17,11 @@ const app = express();
 // Connect to MongoDB
 connectDB();
 
+// Trust proxy - required for secure cookies behind Render's reverse proxy
+if (process.env.NODE_ENV === 'production') {
+  app.set('trust proxy', 1);
+}
+
 // CORS Configuration - Whitelist allowed origins
 const allowedOrigins = [
   "http://localhost:5173",                              // Local Vite
