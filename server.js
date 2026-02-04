@@ -17,10 +17,24 @@ const app = express();
 // Connect to MongoDB
 connectDB();
 
-// Middleware
+// CORS Configuration - Whitelist allowed origins
+const allowedOrigins = [
+  "http://localhost:5173",                              // Local Vite
+  "http://localhost:3000",                              // Local Alternative
+  "https://sydney-events-platform-ten.vercel.app"       // 🚀 Live Vercel URL
+];
+
 app.use(cors({
-  origin: 'http://localhost:3000',
-  credentials: true,
+  origin: (origin, callback) => {
+    // Allow requests with no origin (like mobile apps or curl requests)
+    if (!origin) return callback(null, true);
+    if (allowedOrigins.indexOf(origin) === -1) {
+      const msg = 'The CORS policy for this site does not allow access from the specified Origin.';
+      return callback(new Error(msg), false);
+    }
+    return callback(null, true);
+  },
+  credentials: true
 }));
 app.use(express.json());
 
@@ -32,8 +46,8 @@ app.use(
     saveUninitialized: false,
     cookie: {
       maxAge: 24 * 60 * 60 * 1000, // 24 hours
-      secure: false, // Set to true in production with HTTPS
-      sameSite: 'lax', // Allow cross-origin requests
+      secure: process.env.NODE_ENV === 'production', // true in production (HTTPS)
+      sameSite: process.env.NODE_ENV === 'production' ? 'none' : 'lax', // 'none' for cross-origin in production
       httpOnly: true,
     },
   })
