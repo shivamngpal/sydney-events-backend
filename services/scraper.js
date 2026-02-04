@@ -19,18 +19,56 @@ const generateEventHash = (title, link) => {
 const PLACEHOLDER_IMAGE = 'https://placehold.co/600x400?text=Event';
 
 /**
+ * Auto-scroll function to trigger lazy-loaded images
+ */
+const autoScroll = async (page) => {
+    console.log('📜 Auto-scrolling to load lazy images...');
+
+    await page.evaluate(async () => {
+        await new Promise((resolve) => {
+            let totalHeight = 0;
+            const distance = 300; // Scroll step in pixels
+            const delay = 100; // Delay between scrolls
+
+            const timer = setInterval(() => {
+                const scrollHeight = document.body.scrollHeight;
+                window.scrollBy(0, distance);
+                totalHeight += distance;
+
+                if (totalHeight >= scrollHeight) {
+                    clearInterval(timer);
+                    // Scroll back to top
+                    window.scrollTo(0, 0);
+                    resolve();
+                }
+            }, delay);
+        });
+    });
+
+    // Wait for images to load after scrolling
+    await new Promise(resolve => setTimeout(resolve, 2000));
+    console.log('✅ Scrolling complete');
+};
+
+/**
  * Scrape events from What's On Sydney using Title-First approach
  */
-const scrapeEvents = async (limit = 10) => {
+const scrapeEvents = async (limit = 20) => {
     console.log('🚀 Launching browser...');
 
     let browser;
 
     try {
         browser = await puppeteer.launch({
-            headless: false,
+            headless: true, // Must be true for production servers
             defaultViewport: null,
-            args: ['--start-maximized'],
+            args: [
+                '--no-sandbox',
+                '--disable-setuid-sandbox',
+                '--disable-dev-shm-usage',
+                '--single-process', // Helps with memory limits on Render
+                '--start-maximized'
+            ],
         });
 
         const page = await browser.newPage();
@@ -39,7 +77,7 @@ const scrapeEvents = async (limit = 10) => {
         console.log(`📍 Navigating to: ${url}`);
 
         await page.goto(url, {
-            waitUntil: 'domcontentloaded',
+            waitUntil: 'networkidle2',
             timeout: 60000
         });
 
@@ -48,9 +86,12 @@ const scrapeEvents = async (limit = 10) => {
         await page.waitForSelector('h3', { timeout: 15000 });
 
         // Extra wait for dynamic content
-        await new Promise(resolve => setTimeout(resolve, 3000));
+        await new Promise(resolve => setTimeout(resolve, 2000));
 
-        console.log('🔍 Extracting events using Title-First approach...');
+        // Auto-scroll to trigger lazy loading
+        await autoScroll(page);
+
+        console.log('🔍 Extracting events with improved image detection...');
 
         const events = await page.evaluate((placeholderImg) => {
             const results = [];
@@ -74,21 +115,50 @@ const scrapeEvents = async (limit = 10) => {
                     if (sourceUrl.includes('facebook') || sourceUrl.includes('twitter') ||
                         sourceUrl.includes('instagram') || sourceUrl.includes('mailto:')) continue;
 
+                    // Improved image extraction with lazy-load support
                     let image = '';
                     let imgEl = link.querySelector('img');
                     if (!imgEl) {
-                        const card = link.closest('article, .card, .event, div');
+                        const card = link.closest('article, .card, .event, div[class*="card"], div[class*="event"]');
                         if (card) imgEl = card.querySelector('img');
                     }
+
                     if (imgEl) {
-                        image = imgEl.src || imgEl.dataset?.src || '';
+                        // Check for lazy-load attributes first
+                        image = imgEl.getAttribute('data-src') ||
+                            imgEl.getAttribute('data-lazy-src') ||
+                            imgEl.getAttribute('data-original') ||
+                            imgEl.currentSrc ||
+                            imgEl.src || '';
+
+                        // Handle srcset - get the largest image
+                        if (!image || image.includes('data:image') || image.includes('1x1')) {
+                            const srcset = imgEl.getAttribute('srcset');
+                            if (srcset) {
+                                const sources = srcset.split(',').map(s => s.trim().split(' ')[0]);
+                                image = sources[sources.length - 1] || sources[0] || '';
+                            }
+                        }
+
+                        // Filter out tracking pixels and tiny images
+                        if (image && (
+                            image.includes('1x1') ||
+                            image.includes('pixel') ||
+                            image.includes('tracking') ||
+                            image.includes('data:image') ||
+                            image.includes('blank.gif') ||
+                            image.length < 20
+                        )) {
+                            image = '';
+                        }
                     }
+
                     if (!image) image = placeholderImg;
 
                     let date = 'Check Link for Date';
                     const card = link.closest('article, .card, .event, div');
                     if (card) {
-                        const dateEl = card.querySelector('.date, time, [datetime]');
+                        const dateEl = card.querySelector('.date, time, [datetime], [class*="date"]');
                         if (dateEl) {
                             date = dateEl.textContent?.trim() || dateEl.getAttribute('datetime') || date;
                         }
@@ -96,7 +166,7 @@ const scrapeEvents = async (limit = 10) => {
 
                     let description = '';
                     if (card) {
-                        const descEl = card.querySelector('p, .description, .summary');
+                        const descEl = card.querySelector('p, .description, .summary, [class*="desc"]');
                         if (descEl && descEl !== h3) {
                             description = descEl.textContent?.trim() || '';
                         }
@@ -139,6 +209,11 @@ const scrapeEvents = async (limit = 10) => {
         }
 
         console.log(`✅ Scraped ${uniqueEvents.length} unique events`);
+
+        // Log image stats
+        const withImages = uniqueEvents.filter(e => e.image && !e.image.includes('placehold')).length;
+        console.log(`🖼️ Events with real images: ${withImages}/${uniqueEvents.length}`);
+
         return uniqueEvents;
 
     } catch (error) {
