@@ -1,4 +1,8 @@
 const nodemailer = require('nodemailer');
+const dns = require('dns');
+
+// Force IPv4 resolution - Render's free tier doesn't support outbound IPv6
+dns.setDefaultResultOrder('ipv4first');
 
 // Lazy-create transporter on first use (ensures env vars are loaded)
 let transporter = null;
