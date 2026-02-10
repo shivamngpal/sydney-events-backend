@@ -67,11 +67,13 @@ const eventRoutes = require('./routes/events');
 const leadRoutes = require('./routes/leads');
 const authRoutes = require('./routes/auth');
 const adminRoutes = require('./routes/admin');
+const otpRoutes = require('./routes/otp');
 
 app.use('/api/events', eventRoutes);
 app.use('/api/leads', leadRoutes);
 app.use('/auth', authRoutes);
 app.use('/api/admin', adminRoutes);
+app.use('/api/otp', otpRoutes);
 
 // Test route
 app.get('/', (req, res) => {
