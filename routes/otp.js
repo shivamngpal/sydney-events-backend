@@ -31,7 +31,7 @@ router.post('/send', async (req, res) => {
 
         res.json({ success: true, message: 'Verification code sent' });
     } catch (error) {
-        console.error('Error sending OTP:', error);
+        console.error('Error sending OTP:', error.message || error);
         res.status(500).json({ success: false, message: 'Failed to send verification code' });
     }
 });

@@ -1,13 +1,29 @@
 const nodemailer = require('nodemailer');
 
-// Create reusable transporter using Gmail SMTP
-const transporter = nodemailer.createTransport({
-    service: 'gmail',
-    auth: {
-        user: process.env.EMAIL_USER,
-        pass: process.env.EMAIL_PASS,
-    },
-});
+// Lazy-create transporter on first use (ensures env vars are loaded)
+let transporter = null;
+
+const getTransporter = () => {
+    if (!transporter) {
+        if (!process.env.EMAIL_USER || !process.env.EMAIL_PASS) {
+            throw new Error('EMAIL_USER and EMAIL_PASS environment variables are required');
+        }
+
+        transporter = nodemailer.createTransport({
+            host: 'smtp.gmail.com',
+            port: 587,
+            secure: false, // STARTTLS
+            auth: {
+                user: process.env.EMAIL_USER,
+                pass: process.env.EMAIL_PASS,
+            },
+            connectionTimeout: 10000, // 10s to connect
+            greetingTimeout: 10000,   // 10s for SMTP greeting
+            socketTimeout: 15000,     // 15s socket inactivity
+        });
+    }
+    return transporter;
+};
 
 /**
  * Send OTP verification email
@@ -33,7 +49,8 @@ const sendOTP = async (email, otp) => {
         `,
     };
 
-    await transporter.sendMail(mailOptions);
+    const transport = getTransporter();
+    await transport.sendMail(mailOptions);
     console.log(`📧 OTP sent to ${email}`);
 };
 
