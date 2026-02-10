@@ -11,15 +11,15 @@ const getTransporter = () => {
 
         transporter = nodemailer.createTransport({
             host: 'smtp.gmail.com',
-            port: 587,
-            secure: false, // STARTTLS
+            port: 465,
+            secure: true, // Direct SSL (more reliable on cloud platforms like Render)
             auth: {
                 user: process.env.EMAIL_USER,
                 pass: process.env.EMAIL_PASS,
             },
-            connectionTimeout: 10000, // 10s to connect
-            greetingTimeout: 10000,   // 10s for SMTP greeting
-            socketTimeout: 15000,     // 15s socket inactivity
+            connectionTimeout: 30000, // 30s to connect
+            greetingTimeout: 30000,   // 30s for SMTP greeting
+            socketTimeout: 30000,     // 30s socket inactivity
         });
     }
     return transporter;
